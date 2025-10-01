@@ -6,6 +6,9 @@ public class OlaMapsFlutterPlugin: NSObject, FlutterPlugin {
     let channel = FlutterMethodChannel(name: "ola_maps_flutter", binaryMessenger: registrar.messenger())
     let instance = OlaMapsFlutterPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
+
+    let factory = OlaMapViewFactory(messenger: registrar.messenger())
+    registrar.register(factory, withId: "ola_maps_flutter/map_view")
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {

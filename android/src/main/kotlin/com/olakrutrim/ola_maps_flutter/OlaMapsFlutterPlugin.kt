@@ -22,7 +22,7 @@ class OlaMapsFlutterPlugin: FlutterPlugin, MethodCallHandler, ActivityAware {
         .platformViewRegistry
         .registerViewFactory(
             "ola_maps_flutter/map_view",
-            OlaMapViewFactory(flutterPluginBinding.binaryMessenger)
+            OlaMapViewFactory(flutterPluginBinding)
         )
   }
 

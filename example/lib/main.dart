@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ola_maps_flutter/ola_maps_flutter.dart';
+import 'dart:ui' as ui;
+import 'package:ola_maps_flutter/src/models/bezier_curve.dart';
 
 void main() {
   runApp(const MyApp());
@@ -13,10 +15,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'OlaMaps Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        useMaterial3: true,
-      ),
+      theme: ThemeData(primarySwatch: Colors.green, useMaterial3: true),
       home: const HomePage(),
     );
   }
@@ -38,64 +37,73 @@ class HomePage extends StatelessWidget {
             title: const Text('Basic Map'),
             subtitle: const Text('Display a simple interactive map'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const BasicMapExample()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BasicMapExample()),
+                ),
           ),
           ListTile(
             title: const Text('Predefined Markers'),
             subtitle: const Text('Show markers at specific locations'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PredefinedMarkersExample()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PredefinedMarkersExample(),
+                  ),
+                ),
           ),
           ListTile(
             title: const Text('Markers Demo'),
             subtitle: const Text('Add, remove, and update markers'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const MarkersExample()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MarkersExample()),
+                ),
           ),
           ListTile(
             title: const Text('Polylines Demo'),
             subtitle: const Text('Draw routes and paths on the map'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PolylinesExample()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PolylinesExample()),
+                ),
           ),
           ListTile(
             title: const Text('Camera Controls'),
             subtitle: const Text('Animate and move camera'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const CameraExample()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CameraExample()),
+                ),
           ),
           ListTile(
             title: const Text('Map Events'),
             subtitle: const Text('Handle map click and camera events'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const EventsExample()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EventsExample()),
+                ),
           ),
           ListTile(
             title: const Text('Location Tracking'),
             subtitle: const Text('Show current location on map'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const LocationExample()),
-            ),
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LocationExample()),
+                ),
           ),
         ],
       ),
@@ -112,44 +120,39 @@ class BasicMapExample extends StatefulWidget {
 }
 
 class _BasicMapExampleState extends State<BasicMapExample> {
-  OlaMapController? _controller;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Basic Map'),
-      ),
+      appBar: AppBar(title: const Text('Basic Map')),
       body: OlaMap(
-        apiKey: 'YOUR-KEY',
+        apiKey: 'API-KEY',
         initialCameraPosition: const CameraPosition(
           target: LatLng(12.9716, 77.5946), // Bangalore coordinates
           zoom: 12,
         ),
         onMapCreated: (controller) {
-          setState(() {
-            _controller = controller;
-          });
+          // Map created successfully
         },
       ),
     );
   }
 }
 
-
 // Predefined Markers Example
 class PredefinedMarkersExample extends StatefulWidget {
   const PredefinedMarkersExample({Key? key}) : super(key: key);
 
   @override
-  State<PredefinedMarkersExample> createState() => _PredefinedMarkersExampleState();
+  State<PredefinedMarkersExample> createState() =>
+      _PredefinedMarkersExampleState();
 }
 
 class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
   OlaMapController? _controller;
   List<String> _markerIds = [];
   Map<String, Map<String, dynamic>> _markerData = {};
-  
+  final List<String> _curveIds = [];
+
   // Hardcoded locations with specific lat-long
   final List<Map<String, dynamic>> predefinedLocations = [
     {
@@ -162,7 +165,7 @@ class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
       'rating': 4.5,
     },
     {
-      'id': 'location_2', 
+      'id': 'location_2',
       'position': const LatLng(12.9318, 77.6144),
       'snippet': 'Brigade Road',
       'title': 'Location 2',
@@ -204,36 +207,147 @@ class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
     await _controller?.clearMarkers();
     _markerData.clear();
     _markerIds.clear();
-    
+
     // Add markers and store their data
     for (final location in predefinedLocations) {
+      print('Adding marker with custom icon: ${location['id']}');
       final markerId = await _controller?.addMarker(
         Marker(
           markerId: location['id'],
           position: location['position'],
           snippet: location['snippet'],
           title: location['title'],
+          icon: MarkerIcon.fromAsset("assets/pin.png"),
           isIconClickable: true,
           isAnimationEnable: true,
           isInfoWindowDismissOnClick: true,
         ),
       );
-      
+
       if (markerId != null) {
         _markerIds.add(markerId);
         _markerData[markerId] = location;
+        print('Successfully added marker: $markerId');
+      } else {
+        print('Failed to add marker: ${location['id']}');
       }
     }
-    
+
     setState(() {});
     print('Added ${_markerIds.length} predefined markers');
   }
-  
+
+  Future<Uint8List> createGreenFlagMarker() async {
+    final ui.PictureRecorder recorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(recorder);
+
+    const double width = 100;
+    const double height = 100;
+
+    // Draw flag pole
+    final Paint polePaint = Paint()..color = Colors.black;
+    canvas.drawRect(Rect.fromLTWH(10, 10, 6, 60), polePaint);
+
+    // Draw flag (green rectangle)
+    final Paint flagPaint = Paint()..color = Colors.green;
+    final Path flagPath = Path();
+    flagPath.moveTo(16, 10);
+    flagPath.lineTo(70, 30);
+    flagPath.lineTo(16, 50);
+    flagPath.close();
+    canvas.drawPath(flagPath, flagPaint);
+
+    final ui.Image img = await recorder.endRecording().toImage(
+      width.toInt(),
+      height.toInt(),
+    );
+    final ByteData? byteData = await img.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+
+    return byteData!.buffer.asUint8List();
+  }
+
+  void _addTestMarkerWithBytesIcon() async {
+    // Create a custom marker with bytes-based icon
+    print('Creating custom bytes icon...');
+    final customIcon = await createGreenFlagMarker();
+    print('Custom icon created with ${customIcon.length} bytes');
+
+    final id = await _controller?.addMarker(
+      Marker(
+        markerId: 'test_marker_${DateTime.now().millisecondsSinceEpoch}',
+        position: const LatLng(12.9350, 77.6100),
+        snippet: 'Test Marker with Custom Icon',
+        title: 'Custom Bytes Icon',
+        icon: MarkerIcon.fromBytes(customIcon),
+        isIconClickable: true,
+        isAnimationEnable: true,
+        isInfoWindowDismissOnClick: true,
+      ),
+    );
+
+    if (id != null) {
+      setState(() {
+        _markerIds.add(id);
+        _markerData[id] = {
+          'position': const LatLng(12.9350, 77.6100),
+          'snippet': 'Test Marker with Custom Icon',
+          'title': 'Custom Bytes Icon',
+          'description': 'This marker uses a custom icon created from bytes',
+          'type': 'Test',
+        };
+      });
+      print('Added test marker with bytes icon: $id');
+    } else {
+      print('Failed to add test marker with bytes icon');
+    }
+  }
+
+  void _testAssetLoading() async {
+    // Test if we can load the asset
+    try {
+      print('Testing asset loading...');
+      final ByteData data = await rootBundle.load('assets/pin.png');
+      print('Asset loaded successfully: ${data.lengthInBytes} bytes');
+
+      // Create a marker with the loaded asset
+      final id = await _controller?.addMarker(
+        Marker(
+          markerId: 'asset_test_${DateTime.now().millisecondsSinceEpoch}',
+          position: const LatLng(12.9300, 77.6000),
+          snippet: 'Asset Test Marker',
+          title: 'Asset Test',
+          icon: MarkerIcon.fromAsset("assets/pin.png"),
+          isIconClickable: true,
+          isAnimationEnable: true,
+          isInfoWindowDismissOnClick: true,
+        ),
+      );
+
+      if (id != null) {
+        setState(() {
+          _markerIds.add(id);
+          _markerData[id] = {
+            'position': const LatLng(12.9300, 77.6000),
+            'snippet': 'Asset Test Marker',
+            'title': 'Asset Test',
+            'description': 'This marker tests asset loading',
+            'type': 'Test',
+          };
+        });
+        print('Added asset test marker: $id');
+      }
+    } catch (e) {
+      print('Error loading asset: $e');
+    }
+  }
+
   void _showMarkerBottomSheet(String markerId) {
     print('TAPPED  JHD');
     final data = _markerData[markerId];
     if (data == null) return;
-    
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -334,33 +448,46 @@ class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
       },
     );
   }
-  
+
   void _addSingleMarker() async {
-    // Add a single marker at a specific hardcoded location
-    final markerId = await _controller?.addMarkerAtLocation(
-      latitude: 12.9400,
-      longitude: 77.6200,
-      markerId: 'single_marker_${DateTime.now().millisecondsSinceEpoch}',
-      snippet: 'Single Marker Location',
-      title: 'Custom Point',
+    // Add a single marker at a specific hardcoded location with custom icon
+    final markerId = 'single_marker_${DateTime.now().millisecondsSinceEpoch}';
+    final id = await _controller?.addMarker(
+      Marker(
+        markerId: markerId,
+        position: const LatLng(12.9400, 77.6200),
+        snippet: 'Single Marker Location',
+        title: 'Custom Point',
+        icon: MarkerIcon.fromAsset("assets/pin.png"),
+        isIconClickable: true,
+        isAnimationEnable: true,
+        isInfoWindowDismissOnClick: true,
+      ),
     );
-    
-    if (markerId != null) {
+
+    if (id != null) {
       setState(() {
-        _markerIds.add(markerId);
-        _markerData[markerId] = {
+        _markerIds.add(id);
+        _markerData[id] = {
           'position': const LatLng(12.9400, 77.6200),
           'snippet': 'Single Marker Location',
           'title': 'Custom Point',
-          'description': 'This is a manually added single marker',
+          'description':
+              'This is a manually added single marker with custom icon',
           'type': 'Custom',
         };
       });
-      print('Added single marker: $markerId');
+      print('Added single marker with custom icon: $id');
     }
   }
-  
-  void _showMarkerAtSpecificLocation(double lat, double lng, String name, String description, String type) async {
+
+  void _showMarkerAtSpecificLocation(
+    double lat,
+    double lng,
+    String name,
+    String description,
+    String type,
+  ) async {
     final markerId = 'specific_${DateTime.now().millisecondsSinceEpoch}';
     final id = await _controller?.addMarkerAtLocation(
       latitude: lat,
@@ -368,7 +495,7 @@ class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
       snippet: name,
       markerId: markerId,
     );
-    
+
     if (id != null) {
       setState(() {
         _markerIds.add(id);
@@ -379,13 +506,10 @@ class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
           'type': type,
         };
       });
-      
+
       // Zoom to the new marker
-      _controller?.animateCamera(
-        target: LatLng(lat, lng),
-        zoom: 16,
-      );
-      
+      _controller?.animateCamera(target: LatLng(lat, lng), zoom: 16);
+
       // Show info window
       _controller?.showInfoWindow(id);
     }
@@ -412,9 +536,12 @@ class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
       body: Stack(
         children: [
           OlaMap(
-            apiKey: 'YOUR-KEY',
+            apiKey: 'API-KEY',
             initialCameraPosition: const CameraPosition(
-              target: LatLng(12.9345, 77.6150), // Center of predefined locations
+              target: LatLng(
+                12.9345,
+                77.6150,
+              ), // Center of predefined locations
               zoom: 15,
             ),
             onMapCreated: (controller) {
@@ -427,9 +554,9 @@ class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
                 print("MAP READY1212");
                 _showMarkerBottomSheet(markerId);
               });
-              
+
               // Automatically add predefined markers when map is ready
-              Future.delayed(const Duration(milliseconds: 500), () {
+              Future.delayed(const Duration(milliseconds: 2000), () {
                 _addPredefinedMarkers();
               });
             },
@@ -492,52 +619,132 @@ class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
                       children: [
                         ActionChip(
                           label: const Text('Cubbon Park'),
-                          onPressed: () => _showMarkerAtSpecificLocation(
-                            12.9763,
-                            77.5929,
-                            'Cubbon Park',
-                            'A large public park with lush greenery in the heart of the city',
-                            'Park',
-                          ),
+                          onPressed:
+                              () => _showMarkerAtSpecificLocation(
+                                12.9763,
+                                77.5929,
+                                'Cubbon Park',
+                                'A large public park with lush greenery in the heart of the city',
+                                'Park',
+                              ),
                         ),
                         ActionChip(
                           label: const Text('Lalbagh'),
-                          onPressed: () => _showMarkerAtSpecificLocation(
-                            12.9507,
-                            77.5848,
-                            'Lalbagh Botanical Garden',
-                            'Historic botanical garden with rare plant species and glasshouse',
-                            'Garden',
-                          ),
+                          onPressed:
+                              () => _showMarkerAtSpecificLocation(
+                                12.9507,
+                                77.5848,
+                                'Lalbagh Botanical Garden',
+                                'Historic botanical garden with rare plant species and glasshouse',
+                                'Garden',
+                              ),
                         ),
                         ActionChip(
                           label: const Text('Vidhana Soudha'),
-                          onPressed: () => _showMarkerAtSpecificLocation(
-                            12.9794,
-                            77.5907,
-                            'Vidhana Soudha',
-                            'Iconic legislative building and seat of Karnataka government',
-                            'Government',
-                          ),
+                          onPressed:
+                              () => _showMarkerAtSpecificLocation(
+                                12.9794,
+                                77.5907,
+                                'Vidhana Soudha',
+                                'Iconic legislative building and seat of Karnataka government',
+                                'Government',
+                              ),
                         ),
                         ActionChip(
                           label: const Text('ISKCON Temple'),
-                          onPressed: () => _showMarkerAtSpecificLocation(
-                            12.9716,
-                            77.6411,
-                            'ISKCON Temple',
-                            'Famous Krishna temple with beautiful architecture',
-                            'Temple',
+                          onPressed:
+                              () => _showMarkerAtSpecificLocation(
+                                12.9716,
+                                77.6411,
+                                'ISKCON Temple',
+                                'Famous Krishna temple with beautiful architecture',
+                                'Temple',
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              if (_controller == null) return;
+                              final id = await _controller!.addBezierCurve(
+                                BezierCurve(
+                                  curveId:
+                                      'bcurve_${DateTime.now().millisecondsSinceEpoch}',
+                                  startPoint: const LatLng(
+                                    23.036885,
+                                    72.561059,
+                                  ),
+                                  endPoint: const LatLng(23.037355, 72.567242),
+                                  lineType: BezierLineType.dotted,
+                                  color: const Color(0xFF000000),
+                                ),
+                              );
+                              setState(() {
+                                _curveIds.add(id);
+                              });
+                            },
+                            icon: const Icon(Icons.timeline),
+                            label: const Text('Add Bezier Curve'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () async {
+                              await _controller?.clearBezierCurves();
+                              setState(() {
+                                _curveIds.clear();
+                              });
+                            },
+                            icon: const Icon(Icons.clear),
+                            label: const Text('Clear Curves'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _addTestMarkerWithBytesIcon,
+                            icon: const Icon(Icons.flag),
+                            label: const Text('Test Bytes Icon'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _testAssetLoading,
+                            icon: const Icon(Icons.image),
+                            label: const Text('Test Asset'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                              foregroundColor: Colors.white,
+                            ),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     ElevatedButton.icon(
-                      onPressed: () => _controller?.animateCamera(
-                        target: const LatLng(12.9345, 77.6150),
-                        zoom: 15,
-                      ),
+                      onPressed:
+                          () => _controller?.animateCamera(
+                            target: const LatLng(12.9345, 77.6150),
+                            zoom: 15,
+                          ),
                       icon: const Icon(Icons.zoom_out_map),
                       label: const Text('Show All Markers'),
                       style: ElevatedButton.styleFrom(
@@ -569,15 +776,12 @@ class _MarkersExampleState extends State<MarkersExample> {
   int _markerIdCounter = 0;
 
   void _addMarker(LatLng position) async {
-
-
     await _controller?.addMarkerAtLocation(
       latitude: 12.9314,
       longitude: 77.6164,
       snippet: 'MG Road',
       markerId: 'mg_road',
     );
-
 
     final markerId = 'marker_$_markerIdCounter';
     _markerIdCounter++;
@@ -593,7 +797,6 @@ class _MarkersExampleState extends State<MarkersExample> {
     //   ),
     // );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -611,7 +814,7 @@ class _MarkersExampleState extends State<MarkersExample> {
       body: Stack(
         children: [
           OlaMap(
-            apiKey: 'YOUR-KEY',
+            apiKey: 'API-KEY',
             initialCameraPosition: const CameraPosition(
               target: LatLng(12.9716, 77.5946),
               zoom: 12,
@@ -620,7 +823,7 @@ class _MarkersExampleState extends State<MarkersExample> {
               setState(() {
                 _controller = controller;
               });
-              
+
               // Listen to map clicks to add markers
               controller.onMapClick.listen((position) {
                 _addMarker(position);
@@ -663,7 +866,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
   void _addRoutePolyline() {
     final polylineId = 'route_$_polylineCounter';
     _polylineCounter++;
-    
+
     // Create a route from Bangalore city center to Airport
     final routePoints = [
       const LatLng(12.9716, 77.5946), // MG Road
@@ -681,7 +884,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
         width: 5.0,
       ),
     );
-    
+
     setState(() {
       _polylineIds.add(polylineId);
     });
@@ -696,7 +899,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
   void _addNavigationPolyline() {
     final polylineId = 'navigation_$_polylineCounter';
     _polylineCounter++;
-    
+
     // Create a navigation path with turns
     final navigationPoints = [
       const LatLng(12.9314, 77.6164), // Start
@@ -714,7 +917,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
         width: 8.0,
       ),
     );
-    
+
     setState(() {
       _polylineIds.add(polylineId);
     });
@@ -729,14 +932,16 @@ class _PolylinesExampleState extends State<PolylinesExample> {
   void _addCustomPolyline() {
     final polylineId = 'custom_$_polylineCounter';
     _polylineCounter++;
-    
+
     // Create a decorative polyline pattern
     final customPoints = <LatLng>[];
     for (int i = 0; i <= 10; i++) {
-      customPoints.add(LatLng(
-        12.9716 + (i * 0.003),
-        77.5946 + (i * 0.002) + (i.isEven ? 0.002 : -0.002),
-      ));
+      customPoints.add(
+        LatLng(
+          12.9716 + (i * 0.003),
+          77.5946 + (i * 0.002) + (i.isEven ? 0.002 : -0.002),
+        ),
+      );
     }
 
     _controller?.addPolyline(
@@ -747,7 +952,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
         width: 3.0,
       ),
     );
-    
+
     setState(() {
       _polylineIds.add(polylineId);
     });
@@ -764,14 +969,11 @@ class _PolylinesExampleState extends State<PolylinesExample> {
       // Generate new random points for the last polyline
       final newPoints = <LatLng>[];
       for (int i = 0; i <= 5; i++) {
-        newPoints.add(LatLng(
-          12.9716 + (i * 0.005),
-          77.5946 + (i * 0.003),
-        ));
+        newPoints.add(LatLng(12.9716 + (i * 0.005), 77.5946 + (i * 0.003)));
       }
-      
+
       _controller?.updatePolyline(_polylineIds.last, newPoints);
-      
+
       // Show a snackbar
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -787,7 +989,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
       final polylineId = _polylineIds.removeLast();
       _controller?.removePolyline(polylineId);
       setState(() {});
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Removed polyline: $polylineId'),
@@ -802,7 +1004,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
     setState(() {
       _polylineIds.clear();
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Cleared all polylines'),
@@ -827,7 +1029,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
       body: Stack(
         children: [
           OlaMap(
-            apiKey: 'YOUR-KEY',
+            apiKey: 'API-KEY',
             initialCameraPosition: const CameraPosition(
               target: LatLng(12.9716, 77.5946),
               zoom: 11,
@@ -836,7 +1038,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
               setState(() {
                 _controller = controller;
               });
-              
+
               // Add initial polyline
               _addRoutePolyline();
             },
@@ -889,12 +1091,14 @@ class _PolylinesExampleState extends State<PolylinesExample> {
                           ),
                         ),
                         OutlinedButton.icon(
-                          onPressed: _polylineIds.isEmpty ? null : _updateLastPolyline,
+                          onPressed:
+                              _polylineIds.isEmpty ? null : _updateLastPolyline,
                           icon: const Icon(Icons.edit, size: 18),
                           label: const Text('Update Last'),
                         ),
                         OutlinedButton.icon(
-                          onPressed: _polylineIds.isEmpty ? null : _removeLastPolyline,
+                          onPressed:
+                              _polylineIds.isEmpty ? null : _removeLastPolyline,
                           icon: const Icon(Icons.remove_circle, size: 18),
                           label: const Text('Remove Last'),
                           style: OutlinedButton.styleFrom(
@@ -914,7 +1118,6 @@ class _PolylinesExampleState extends State<PolylinesExample> {
   }
 }
 
-
 // Camera Example
 class CameraExample extends StatefulWidget {
   const CameraExample({Key? key}) : super(key: key);
@@ -930,13 +1133,11 @@ class _CameraExampleState extends State<CameraExample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Camera Controls'),
-      ),
+      appBar: AppBar(title: const Text('Camera Controls')),
       body: Stack(
         children: [
           OlaMap(
-            apiKey: 'YOUR-KEY',
+            apiKey: 'API-KEY',
             initialCameraPosition: const CameraPosition(
               target: LatLng(12.9716, 77.5946),
               zoom: 12,
@@ -945,7 +1146,7 @@ class _CameraExampleState extends State<CameraExample> {
               setState(() {
                 _controller = controller;
               });
-              
+
               controller.onCameraMove.listen((position) {
                 setState(() {
                   _currentZoom = position.zoom;
@@ -969,29 +1170,39 @@ class _CameraExampleState extends State<CameraExample> {
                       spacing: 8,
                       children: [
                         ElevatedButton(
-                          onPressed: () => _controller?.animateCamera(
-                            target: const LatLng(13.0827, 80.2707), // Chennai
-                            zoom: 12,
-                          ),
+                          onPressed:
+                              () => _controller?.animateCamera(
+                                target: const LatLng(
+                                  13.0827,
+                                  80.2707,
+                                ), // Chennai
+                                zoom: 12,
+                              ),
                           child: const Text('Go to Chennai'),
                         ),
                         ElevatedButton(
-                          onPressed: () => _controller?.animateCamera(
-                            target: const LatLng(19.0760, 72.8777), // Mumbai
-                            zoom: 12,
-                          ),
+                          onPressed:
+                              () => _controller?.animateCamera(
+                                target: const LatLng(
+                                  19.0760,
+                                  72.8777,
+                                ), // Mumbai
+                                zoom: 12,
+                              ),
                           child: const Text('Go to Mumbai'),
                         ),
                         ElevatedButton(
-                          onPressed: () => _controller?.animateCamera(
-                            zoom: _currentZoom + 1,
-                          ),
+                          onPressed:
+                              () => _controller?.animateCamera(
+                                zoom: _currentZoom + 1,
+                              ),
                           child: const Text('Zoom In'),
                         ),
                         ElevatedButton(
-                          onPressed: () => _controller?.animateCamera(
-                            zoom: _currentZoom - 1,
-                          ),
+                          onPressed:
+                              () => _controller?.animateCamera(
+                                zoom: _currentZoom - 1,
+                              ),
                           child: const Text('Zoom Out'),
                         ),
                       ],
@@ -1023,13 +1234,11 @@ class _EventsExampleState extends State<EventsExample> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Map Events'),
-      ),
+      appBar: AppBar(title: const Text('Map Events')),
       body: Stack(
         children: [
           OlaMap(
-            apiKey: 'YOUR-KEY',
+            apiKey: 'API-KEY',
             initialCameraPosition: const CameraPosition(
               target: LatLng(12.9716, 77.5946),
               zoom: 12,
@@ -1038,14 +1247,15 @@ class _EventsExampleState extends State<EventsExample> {
               setState(() {
                 _controller = controller;
               });
-              
+
               // Listen to map events
               controller.onMapClick.listen((position) {
                 setState(() {
-                  _lastEvent = 'Map clicked at: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+                  _lastEvent =
+                      'Map clicked at: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
                   _lastClickedPosition = position;
                 });
-                
+
                 // Add marker at clicked position
                 controller.addMarker(
                   Marker(
@@ -1055,13 +1265,14 @@ class _EventsExampleState extends State<EventsExample> {
                   ),
                 );
               });
-              
+
               controller.onMapLongClick.listen((position) {
                 setState(() {
-                  _lastEvent = 'Map long-clicked at: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
+                  _lastEvent =
+                      'Map long-clicked at: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}';
                 });
               });
-              
+
               controller.onCameraIdle.listen((_) {
                 setState(() {
                   _lastEvent = 'Camera idle';
@@ -1089,10 +1300,11 @@ class _EventsExampleState extends State<EventsExample> {
                     if (_lastClickedPosition != null) ...[
                       const SizedBox(height: 8),
                       ElevatedButton(
-                        onPressed: () => _controller?.animateCamera(
-                          target: _lastClickedPosition!,
-                          zoom: 15,
-                        ),
+                        onPressed:
+                            () => _controller?.animateCamera(
+                              target: _lastClickedPosition!,
+                              zoom: 15,
+                            ),
                         child: const Text('Zoom to Last Click'),
                       ),
                     ],
@@ -1137,7 +1349,7 @@ class _LocationExampleState extends State<LocationExample> {
         ],
       ),
       body: OlaMap(
-        apiKey: 'YOUR-KEY',
+        apiKey: 'API-KEY',
         initialCameraPosition: const CameraPosition(
           target: LatLng(12.9716, 77.5946),
           zoom: 12,

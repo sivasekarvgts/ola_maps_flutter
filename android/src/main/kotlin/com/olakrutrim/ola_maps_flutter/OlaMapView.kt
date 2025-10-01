@@ -8,13 +8,17 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.platform.PlatformView
 
 class OlaMapView(
     private val context: Context,
     private val id: Int,
     private val creationParams: Map<String, Any?>?,
-    private val binaryMessenger: BinaryMessenger
+    private val binaryMessenger: BinaryMessenger,
+    private val flutterAssets: FlutterPlugin.FlutterAssets
 ) : PlatformView, MethodCallHandler {
 
     private val container: FrameLayout = FrameLayout(context)
@@ -27,6 +31,7 @@ class OlaMapView(
     private val polylines = mutableMapOf<String, Any>()
     private val polygons = mutableMapOf<String, Any>()
     private val circles = mutableMapOf<String, Any>()
+    private val bezierCurves = mutableMapOf<String, Any>()
 
     init {
         methodChannel = MethodChannel(binaryMessenger, "ola_maps_flutter_$id")
@@ -66,6 +71,57 @@ class OlaMapView(
                 instance
             }
         }
+    }
+
+    private fun getMarkerIconBitmap(iconData: Map<String, Any>): Bitmap? {
+        val type = iconData["type"] as? String
+        android.util.Log.d("OlaMapView", "Getting marker icon bitmap, type: $type")
+        android.util.Log.d("OlaMapView", "Full icon data: $iconData")
+        
+        if (type == "asset") {
+            val assetName = iconData["assetName"] as? String
+            android.util.Log.d("OlaMapView", "Loading asset: $assetName")
+            if (assetName != null) {
+                try {
+                    val assetKey = flutterAssets.getAssetFilePathByName(assetName)
+                    android.util.Log.d("OlaMapView", "Asset key: $assetKey")
+                    val assetManager = context.assets
+                    val inputStream = assetManager.open(assetKey)
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream.close()
+                    
+                    if (bitmap != null) {
+                        android.util.Log.d("OlaMapView", "✅ Successfully loaded asset bitmap: ${bitmap.width}x${bitmap.height}")
+                        return bitmap
+                    } else {
+                        android.util.Log.e("OlaMapView", "❌ BitmapFactory.decodeStream returned null")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("OlaMapView", "❌ Error loading asset: $assetName", e)
+                    e.printStackTrace()
+                }
+            } else {
+                android.util.Log.e("OlaMapView", "❌ Asset name is null")
+            }
+        } else if (type == "bytes") {
+            val bytes = iconData["bytes"] as? ByteArray
+            android.util.Log.d("OlaMapView", "Loading bytes: ${bytes?.size} bytes")
+            if (bytes != null) {
+                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                if (bitmap != null) {
+                    android.util.Log.d("OlaMapView", "✅ Successfully loaded bytes bitmap: ${bitmap.width}x${bitmap.height}")
+                    return bitmap
+                } else {
+                    android.util.Log.e("OlaMapView", "❌ BitmapFactory.decodeByteArray returned null")
+                }
+            } else {
+                android.util.Log.e("OlaMapView", "❌ Bytes array is null")
+            }
+        } else {
+            android.util.Log.e("OlaMapView", "❌ Unknown icon type: $type")
+        }
+        android.util.Log.w("OlaMapView", "❌ No valid icon data found")
+        return null
     }
 
     private fun initializeMap() {
@@ -282,7 +338,7 @@ class OlaMapView(
                         val isIconClickable = call.argument<Boolean>("isIconClickable") ?: true
                         val isAnimationEnable = call.argument<Boolean>("isAnimationEnable") ?: true
                         val isInfoWindowDismissOnClick = call.argument<Boolean>("isInfoWindowDismissOnClick") ?: true
-                        
+                        val iconData = call.argument<Map<String, Any>>("icon")
                         olaMap?.let { map ->
                             try {
                                 android.util.Log.d("OlaMapView", "Adding marker at: $lat, $lng with snippet: $snippet")
@@ -332,6 +388,104 @@ class OlaMapView(
                                 // Set info window dismiss on click
                                 val setIsInfoWindowDismissOnClickMethod = builderClass.getMethod("setIsInfoWindowDismissOnClick", Boolean::class.java)
                                 setIsInfoWindowDismissOnClickMethod.invoke(builder, isInfoWindowDismissOnClick)
+
+                                // Handle custom icon BEFORE building the marker options
+                                if (iconData != null) {
+                                    android.util.Log.d("OlaMapView", "🎯 Processing icon data: $iconData")
+                                    val bitmap = getMarkerIconBitmap(iconData)
+                                    if (bitmap != null) {
+                                        try {
+                                            android.util.Log.d("OlaMapView", "🎯 Setting custom marker icon with bitmap: ${bitmap.width}x${bitmap.height}")
+                                            
+                                            // First, let's see what methods are actually available on the builder
+                                            android.util.Log.d("OlaMapView", "🔍 Available methods on OlaMarkerOptions.Builder:")
+                                            builderClass.methods.forEach { method ->
+                                                android.util.Log.d("OlaMapView", "  - ${method.name}(${method.parameterTypes.joinToString { it.simpleName }})")
+                                            }
+                                            
+                                            // Try the correct Ola Maps SDK approach based on available methods
+                                            var iconSetSuccessfully = false
+                                            
+                                            // Method 1: Try setIconBitmap (common in some SDKs)
+                                            try {
+                                                android.util.Log.d("OlaMapView", "🎯 Trying setIconBitmap(Bitmap)...")
+                                                val setIconBitmapMethod = builderClass.getMethod("setIconBitmap", Bitmap::class.java)
+                                                setIconBitmapMethod.invoke(builder, bitmap)
+                                                android.util.Log.d("OlaMapView", "✅ Set marker icon using setIconBitmap(Bitmap)")
+                                                iconSetSuccessfully = true
+                                            } catch (e: Exception) {
+                                                android.util.Log.w("OlaMapView", "❌ setIconBitmap(Bitmap) failed: ${e.message}")
+                                                
+                                                // Method 2: Try setIcon with Bitmap directly
+                                                try {
+                                                    android.util.Log.d("OlaMapView", "🎯 Trying setIcon(Bitmap)...")
+                                                    val setIconMethod = builderClass.getMethod("setIcon", Bitmap::class.java)
+                                                    setIconMethod.invoke(builder, bitmap)
+                                                    android.util.Log.d("OlaMapView", "✅ Set marker icon using setIcon(Bitmap)")
+                                                    iconSetSuccessfully = true
+                                                } catch (e2: Exception) {
+                                                    android.util.Log.w("OlaMapView", "❌ setIcon(Bitmap) failed: ${e2.message}")
+                                                    
+                                                    // Method 3: Try icon with Bitmap
+                                                    try {
+                                                        android.util.Log.d("OlaMapView", "🎯 Trying icon(Bitmap)...")
+                                                        val iconMethod = builderClass.getMethod("icon", Bitmap::class.java)
+                                                        iconMethod.invoke(builder, bitmap)
+                                                        android.util.Log.d("OlaMapView", "✅ Set marker icon using icon(Bitmap)")
+                                                        iconSetSuccessfully = true
+                                                    } catch (e3: Exception) {
+                                                        android.util.Log.w("OlaMapView", "❌ icon(Bitmap) failed: ${e3.message}")
+                                                        
+                                                        // Method 4: Try setMarkerIcon
+                                                        try {
+                                                            android.util.Log.d("OlaMapView", "🎯 Trying setMarkerIcon(Bitmap)...")
+                                                            val setMarkerIconMethod = builderClass.getMethod("setMarkerIcon", Bitmap::class.java)
+                                                            setMarkerIconMethod.invoke(builder, bitmap)
+                                                            android.util.Log.d("OlaMapView", "✅ Set marker icon using setMarkerIcon(Bitmap)")
+                                                            iconSetSuccessfully = true
+                                                        } catch (e4: Exception) {
+                                                            android.util.Log.w("OlaMapView", "❌ setMarkerIcon(Bitmap) failed: ${e4.message}")
+                                                            
+                                                            // Method 5: Try with BitmapDescriptor if available
+                                                            try {
+                                                                android.util.Log.d("OlaMapView", "🎯 Trying BitmapDescriptor approach...")
+                                                                val bitmapDescriptorFactoryClass = Class.forName("com.ola.mapsdk.model.BitmapDescriptorFactory")
+                                                                val fromBitmapMethod = bitmapDescriptorFactoryClass.getMethod("fromBitmap", Bitmap::class.java)
+                                                                val bitmapDescriptor = fromBitmapMethod.invoke(null, bitmap)
+                                                                
+                                                                if (bitmapDescriptor != null) {
+                                                                    val bitmapDescriptorClass = Class.forName("com.ola.mapsdk.model.BitmapDescriptor")
+                                                                    val iconMethod = builderClass.getMethod("icon", bitmapDescriptorClass)
+                                                                    iconMethod.invoke(builder, bitmapDescriptor)
+                                                                    android.util.Log.d("OlaMapView", "✅ Set marker icon using BitmapDescriptor")
+                                                                    iconSetSuccessfully = true
+                                                                } else {
+                                                                    android.util.Log.e("OlaMapView", "❌ BitmapDescriptor is null")
+                                                                }
+                                                            } catch (e5: Exception) {
+                                                                android.util.Log.e("OlaMapView", "❌ BitmapDescriptor approach failed: ${e5.message}")
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            
+                                            if (iconSetSuccessfully) {
+                                                android.util.Log.d("OlaMapView", "🎉 Icon set successfully!")
+                                            } else {
+                                                android.util.Log.e("OlaMapView", "💥 Failed to set icon with any method - will try after marker creation")
+                                            }
+                                            
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("OlaMapView", "💥 Failed to set marker icon", e)
+                                            e.printStackTrace()
+                                        }
+                                    } else {
+                                        android.util.Log.w("OlaMapView", "💥 Could not load bitmap for marker icon")
+                                    }
+                                } else {
+                                    android.util.Log.d("OlaMapView", "ℹ️ No icon data provided, using default marker")
+                                }
                                 
                                 // Build the marker options
                                 val buildMethod = builderClass.getMethod("build")
@@ -344,6 +498,83 @@ class OlaMapView(
                                 
                                 if (marker != null) {
                                     markers[markerId] = marker
+                                    
+                                    // Try to set icon on the marker after creation as fallback
+                                    if (iconData != null) {
+                                        val bitmap = getMarkerIconBitmap(iconData)
+                                        if (bitmap != null) {
+                                            try {
+                                                android.util.Log.d("OlaMapView", "🔄 Attempting to set icon on marker after creation")
+                                                
+                                                // Show available methods on the marker object
+                                                android.util.Log.d("OlaMapView", "🔍 Available methods on marker object:")
+                                                marker.javaClass.methods.forEach { method ->
+                                                    android.util.Log.d("OlaMapView", "  - ${method.name}(${method.parameterTypes.joinToString { it.simpleName }})")
+                                                }
+                                                
+                                                var iconSetOnMarker = false
+                                                
+                                                // Try different methods to set icon on marker
+                                                try {
+                                                    android.util.Log.d("OlaMapView", "🔄 Trying setIcon(Bitmap) on marker...")
+                                                    val setIconMethod = marker.javaClass.getMethod("setIcon", Bitmap::class.java)
+                                                    setIconMethod.invoke(marker, bitmap)
+                                                    android.util.Log.d("OlaMapView", "✅ Set icon on marker using setIcon(Bitmap)")
+                                                    iconSetOnMarker = true
+                                                } catch (e: Exception) {
+                                                    android.util.Log.w("OlaMapView", "❌ setIcon(Bitmap) on marker failed: ${e.message}")
+                                                    
+                                                    // Try setIconBitmap
+                                                    try {
+                                                        android.util.Log.d("OlaMapView", "🔄 Trying setIconBitmap(Bitmap) on marker...")
+                                                        val setIconBitmapMethod = marker.javaClass.getMethod("setIconBitmap", Bitmap::class.java)
+                                                        setIconBitmapMethod.invoke(marker, bitmap)
+                                                        android.util.Log.d("OlaMapView", "✅ Set icon on marker using setIconBitmap(Bitmap)")
+                                                        iconSetOnMarker = true
+                                                    } catch (e2: Exception) {
+                                                        android.util.Log.w("OlaMapView", "❌ setIconBitmap(Bitmap) on marker failed: ${e2.message}")
+                                                        
+                                                        // Try setMarkerIcon
+                                                        try {
+                                                            android.util.Log.d("OlaMapView", "🔄 Trying setMarkerIcon(Bitmap) on marker...")
+                                                            val setMarkerIconMethod = marker.javaClass.getMethod("setMarkerIcon", Bitmap::class.java)
+                                                            setMarkerIconMethod.invoke(marker, bitmap)
+                                                            android.util.Log.d("OlaMapView", "✅ Set icon on marker using setMarkerIcon(Bitmap)")
+                                                            iconSetOnMarker = true
+                                                        } catch (e3: Exception) {
+                                                            android.util.Log.w("OlaMapView", "❌ setMarkerIcon(Bitmap) on marker failed: ${e3.message}")
+                                                            
+                                                            // Try with BitmapDescriptor
+                                                            try {
+                                                                android.util.Log.d("OlaMapView", "🔄 Trying BitmapDescriptor on marker...")
+                                                                val bitmapDescriptorFactoryClass = Class.forName("com.ola.mapsdk.model.BitmapDescriptorFactory")
+                                                                val fromBitmapMethod = bitmapDescriptorFactoryClass.getMethod("fromBitmap", Bitmap::class.java)
+                                                                val bitmapDescriptor = fromBitmapMethod.invoke(null, bitmap)
+                                                                
+                                                                if (bitmapDescriptor != null) {
+                                                                    val setIconMethod = marker.javaClass.getMethod("setIcon", bitmapDescriptor.javaClass)
+                                                                    setIconMethod.invoke(marker, bitmapDescriptor)
+                                                                    android.util.Log.d("OlaMapView", "✅ Set icon on marker using setIcon(BitmapDescriptor)")
+                                                                    iconSetOnMarker = true
+                                                                }
+                                                            } catch (e4: Exception) {
+                                                                android.util.Log.w("OlaMapView", "❌ BitmapDescriptor on marker failed: ${e4.message}")
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                if (iconSetOnMarker) {
+                                                    android.util.Log.d("OlaMapView", "🎉 Icon set successfully on marker after creation!")
+                                                } else {
+                                                    android.util.Log.e("OlaMapView", "💥 Failed to set icon on marker with any method")
+                                                }
+                                                
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("OlaMapView", "💥 Failed to set icon on marker after creation", e)
+                                            }
+                                        }
+                                    }
                                     
                                     // Log all available methods on the marker object for debugging
                                     android.util.Log.d("OlaMapView", "Available methods on marker object:")
@@ -743,6 +974,170 @@ class OlaMapView(
                         removeMethod.invoke(polyline)
                     }
                     polylines.clear()
+                    result.success(true)
+                } catch (e: Exception) {
+                    result.error("ERROR", e.message, null)
+                }
+            }
+            "addBezierCurve" -> {
+                try {
+                    val curveId = call.argument<String>("curveId") ?: "bcurve_${System.currentTimeMillis()}"
+                    val start = call.argument<Map<String, Double>>("startPoint")
+                    val end = call.argument<Map<String, Double>>("endPoint")
+                    val colorValue = call.argument<String>("color") ?: "#FF000000"
+                    val lineType = call.argument<String>("lineType")
+
+                    if (start != null && end != null) {
+                        olaMap?.let { map ->
+                            val startLatLng = createOlaLatLng(start["latitude"] ?: 0.0, start["longitude"] ?: 0.0)
+                            val endLatLng = createOlaLatLng(end["latitude"] ?: 0.0, end["longitude"] ?: 0.0)
+
+                            // Create BezierCurveOptions via reflection
+                            val optionsClass = Class.forName("com.ola.mapsdk.model.BezierCurveOptions")
+                            val builderClass = Class.forName("com.ola.mapsdk.model.BezierCurveOptions\$Builder")
+
+                            val builder = builderClass.getDeclaredConstructor().newInstance()
+
+                            // setCurveId
+                            try {
+                                val m = builderClass.getMethod("setCurveId", String::class.java)
+                                m.invoke(builder, curveId)
+                            } catch (_: Exception) {}
+
+                            // setStartPoint / setEndPoint
+                            try {
+                                val latLngClass = Class.forName("com.ola.mapsdk.model.OlaLatLng")
+                                val setStart = builderClass.getMethod("setStartPoint", latLngClass)
+                                val setEnd = builderClass.getMethod("setEndPoint", latLngClass)
+                                setStart.invoke(builder, startLatLng)
+                                setEnd.invoke(builder, endLatLng)
+                            } catch (_: Exception) {}
+
+                            // Normalize color to #RRGGBB (Map style 'line-color' typically expects 6-digit hex)
+                            val rgbColor = try {
+                                var c = colorValue
+                                if (!c.startsWith("#")) c = "#" + c
+                                if (c.length == 9) "#" + c.substring(3) else if (c.length == 7) c else "#000000"
+                            } catch (_: Exception) { "#000000" }
+
+                            // Try setColor(String) and setLineColor(String)
+                            var colorSet = false
+                            val colorStringSetters = arrayOf("setColor", "setLineColor")
+                            for (mName in colorStringSetters) {
+                                if (!colorSet) {
+                                    try {
+                                        val m = builderClass.getMethod(mName, String::class.java)
+                                        m.invoke(builder, rgbColor)
+                                        colorSet = true
+                                    } catch (_: Exception) {}
+                                }
+                            }
+
+                            // Fallbacks: Int/Integer variants for setColor / setLineColor
+                            if (!colorSet) {
+                                try {
+                                    val argb = try {
+                                        // if rgbColor is #RRGGBB add opaque alpha
+                                        0xFF000000.toInt() or Integer.parseInt(rgbColor.substring(1), 16)
+                                    } catch (_: Exception) { 0xFF000000.toInt() }
+                                    val intSetters = arrayOf("setColor", "setLineColor")
+                                    for (mName in intSetters) {
+                                        if (!colorSet) {
+                                            try {
+                                                val mInt = builderClass.getMethod(mName, Int::class.java)
+                                                mInt.invoke(builder, argb)
+                                                colorSet = true
+                                            } catch (_: Exception) {
+                                                try {
+                                                    val mInteger = builderClass.getMethod(mName, Integer::class.java)
+                                                    mInteger.invoke(builder, Integer.valueOf(argb))
+                                                    colorSet = true
+                                                } catch (_: Exception) {}
+                                            }
+                                        }
+                                    }
+                                } catch (_: Exception) {}
+                            }
+
+                            // setLineType if available (prefer enum over String)
+                            if (lineType != null) {
+                                var typeSet = false
+                                // Attempt enum
+                                try {
+                                    val lineTypeEnum = Class.forName("com.ola.mapsdk.model.LineType")
+                                    val valueOf = lineTypeEnum.getMethod("valueOf", String::class.java)
+                                    val enumVal = valueOf.invoke(null, lineType)
+                                    try {
+                                        val setLineTypeEnum = builderClass.getMethod("setLineType", lineTypeEnum)
+                                        setLineTypeEnum.invoke(builder, enumVal)
+                                        typeSet = true
+                                    } catch (_: Exception) {}
+                                } catch (_: Exception) {}
+
+                                // Fallback string setter
+                                if (!typeSet) {
+                                    try {
+                                        val setLineTypeStr = builderClass.getMethod("setLineType", String::class.java)
+                                        setLineTypeStr.invoke(builder, lineType)
+                                    } catch (_: Exception) {}
+                                }
+                            }
+
+                            val build = builderClass.getMethod("build")
+                            val options = build.invoke(builder)
+
+                            val addMethod = map.javaClass.getMethod("addBezierCurve", optionsClass)
+                            val curve = addMethod.invoke(map, options)
+                            bezierCurves[curveId] = curve!!
+                            result.success(curveId)
+                        } ?: result.error("MAP_NOT_READY", "Map is not ready", null)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "startPoint and endPoint are required", null)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("OlaMapView", "Error adding bezier curve", e)
+                    result.error("ERROR", e.message, null)
+                }
+            }
+            "removeBezierCurve" -> {
+                try {
+                    val curveId = call.argument<String>("curveId")
+                    if (curveId != null) {
+                        bezierCurves[curveId]?.let { curve ->
+                            try {
+                                val removeMethod = curve.javaClass.getMethod("removeBezierCurve")
+                                removeMethod.invoke(curve)
+                            } catch (_: Exception) {
+                                // fallback method name
+                                try {
+                                    val removeAlt = curve.javaClass.getMethod("remove")
+                                    removeAlt.invoke(curve)
+                                } catch (_: Exception) {}
+                            }
+                            bezierCurves.remove(curveId)
+                            result.success(true)
+                        } ?: result.error("NOT_FOUND", "Bezier curve not found", null)
+                    } else {
+                        result.error("INVALID_ARGUMENT", "curveId is required", null)
+                    }
+                } catch (e: Exception) {
+                    result.error("ERROR", e.message, null)
+                }
+            }
+            "clearBezierCurves" -> {
+                try {
+                    bezierCurves.forEach { (_, curve) ->
+                        try {
+                            val removeMethod = curve.javaClass.getMethod("removeBezierCurve")
+                            removeMethod.invoke(curve)
+                        } catch (_: Exception) {
+                            try {
+                                val removeAlt = curve.javaClass.getMethod("remove")
+                                removeAlt.invoke(curve)
+                            } catch (_: Exception) {}
+                        }
+                    }
+                    bezierCurves.clear()
                     result.success(true)
                 } catch (e: Exception) {
                     result.error("ERROR", e.message, null)

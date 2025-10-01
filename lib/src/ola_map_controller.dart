@@ -7,17 +7,19 @@ import 'models/lat_lng.dart';
 import 'models/marker.dart';
 import 'models/polyline.dart';
 import 'models/polygon.dart';
+import 'models/bezier_curve.dart';
+import 'dart:ui' as ui;
 
 class OlaMapController {
   final MethodChannel _channel;
   final int mapId;
-  
+
   final _onMapClickController = StreamController<LatLng>.broadcast();
   final _onMapLongClickController = StreamController<LatLng>.broadcast();
   final _onCameraMoveController = StreamController<CameraPosition>.broadcast();
   final _onCameraIdleController = StreamController<void>.broadcast();
   final _onMarkerTapController = StreamController<String>.broadcast();
-  
+
   Stream<LatLng> get onMapClick => _onMapClickController.stream;
   Stream<LatLng> get onMapLongClick => _onMapLongClickController.stream;
   Stream<CameraPosition> get onCameraMove => _onCameraMoveController.stream;
@@ -59,7 +61,10 @@ class OlaMapController {
 
   // Marker methods
   Future<String> addMarker(Marker marker) async {
-    final result = await _channel.invokeMethod<String>('addMarker', marker.toJson());
+    final result = await _channel.invokeMethod<String>(
+      'addMarker',
+      marker.toJson(),
+    );
     return result ?? marker.markerId;
   }
 
@@ -94,7 +99,7 @@ class OlaMapController {
   //   }
   //   return markerIds;
   // }
-  
+
   // Add a single marker at a specific location
   Future<String> addMarkerAtLocation({
     required double latitude,
@@ -103,28 +108,61 @@ class OlaMapController {
     String? snippet,
     String? title,
   }) async {
+    final _icon = await createGreenFlagMarker();
     return await addMarker(
       Marker(
         markerId: markerId ?? 'marker_${DateTime.now().millisecondsSinceEpoch}',
         position: LatLng(latitude, longitude),
         snippet: snippet ?? 'Location: $latitude, $longitude',
         title: title,
+        icon: MarkerIcon(type: MarkerIconType.bytes, bytes: _icon),
         isIconClickable: true,
         isAnimationEnable: true,
         isInfoWindowDismissOnClick: true,
       ),
     );
   }
-  
+
+  Future<Uint8List> createGreenFlagMarker() async {
+    final ui.PictureRecorder recorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(recorder);
+
+    const double width = 80;
+    const double height = 80;
+
+    // Draw flag pole
+    final Paint polePaint = Paint()..color = Colors.black;
+    canvas.drawRect(Rect.fromLTWH(10, 10, 6, 60), polePaint);
+
+    // Draw flag (green rectangle)
+    final Paint flagPaint = Paint()..color = Colors.green;
+    final Path flagPath = Path();
+    flagPath.moveTo(16, 10);
+    flagPath.lineTo(70, 30);
+    flagPath.lineTo(16, 50);
+    flagPath.close();
+    canvas.drawPath(flagPath, flagPaint);
+
+    final ui.Image img = await recorder.endRecording().toImage(
+      width.toInt(),
+      height.toInt(),
+    );
+    final ByteData? byteData = await img.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+
+    return byteData!.buffer.asUint8List();
+  }
+
   // Info window methods
   Future<void> showInfoWindow(String markerId) async {
     await _channel.invokeMethod('showInfoWindow', {'markerId': markerId});
   }
-  
+
   Future<void> hideInfoWindow(String markerId) async {
     await _channel.invokeMethod('hideInfoWindow', {'markerId': markerId});
   }
-  
+
   Future<void> updateInfoWindow(String markerId, String infoText) async {
     await _channel.invokeMethod('updateInfoWindow', {
       'markerId': markerId,
@@ -165,6 +203,23 @@ class OlaMapController {
     await _channel.invokeMethod('clearPolygons');
   }
 
+  // Bezier curve methods
+  Future<String> addBezierCurve(BezierCurve curve) async {
+    final result = await _channel.invokeMethod<String>(
+      'addBezierCurve',
+      curve.toJson(),
+    );
+    return result ?? curve.curveId;
+  }
+
+  Future<void> removeBezierCurve(String curveId) async {
+    await _channel.invokeMethod('removeBezierCurve', {'curveId': curveId});
+  }
+
+  Future<void> clearBezierCurves() async {
+    await _channel.invokeMethod('clearBezierCurves');
+  }
+
   // Camera methods
   Future<void> animateCamera({
     LatLng? target,
@@ -196,7 +251,10 @@ class OlaMapController {
     });
   }
 
-  Future<void> animateCameraToPosition(CameraPosition position, {Duration duration = const Duration(milliseconds: 300)}) async {
+  Future<void> animateCameraToPosition(
+    CameraPosition position, {
+    Duration duration = const Duration(milliseconds: 300),
+  }) async {
     await _channel.invokeMethod('animateCamera', {
       'target': position.target.toJson(),
       'zoom': position.zoom,
@@ -216,7 +274,9 @@ class OlaMapController {
   }
 
   Future<CameraPosition> getCameraPosition() async {
-    final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('getCameraPosition');
+    final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+      'getCameraPosition',
+    );
     return CameraPosition.fromJson(Map<String, dynamic>.from(result!));
   }
 
