@@ -142,11 +142,47 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         // Set delegate BEFORE loading the map
         olaMapInstance.delegate = self
         
+        print("🗺️ OlaMapView received arguments: \(arguments)")
         // Store initial camera position and zoom to apply after map is ready (like Android's setupMap)
-        if let cameraPosition = arguments["initialCameraPosition"] as? [String: Any],
-           let target = cameraPosition["target"] as? [Double] {
-            self.initialCoordinate = OlaCoordinate(latitude: target[0], longitude: target[1])
-            self.initialZoom = cameraPosition["zoom"] as? Double
+        if let initialCameraPositionArgs = arguments["initialCameraPosition"] {
+            print("🔍 Raw initialCameraPosition argument: \(initialCameraPositionArgs)")
+            if let cameraPosition = initialCameraPositionArgs as? [AnyHashable: Any] { // Changed to AnyHashable
+                if let targetDict = cameraPosition["target"] as? [AnyHashable: Any] {
+                    print("🔍 targetDict: \(targetDict)")
+                    if let lat = targetDict["latitude"] as? Double {
+                        print("🔍 lat (Double): \(lat)")
+                        if let lng = targetDict["longitude"] as? Double {
+                            print("🔍 lng (Double): \(lng)")
+                            self.initialCoordinate = OlaCoordinate(latitude: lat, longitude: lng)
+                            print("✅ Successfully parsed initialCoordinate: \(self.initialCoordinate!)")
+                        } else {
+                            print("❌ 'longitude' key not found or not a Double in targetDict: \(targetDict["longitude"] ?? "nil")")
+                        }
+                    } else {
+                        print("❌ 'latitude' key not found or not a Double in targetDict: \(targetDict["latitude"] ?? "nil")")
+                    }
+                } else {
+                    print("❌ 'target' key not found or not a [AnyHashable: Any] in cameraPosition: \(cameraPosition["target"] ?? "nil")")
+                }
+
+                if let zoomValue = cameraPosition["zoom"] {
+                    if let zoom = zoomValue as? Double {
+                        self.initialZoom = zoom
+                        print("✅ Successfully parsed initialZoom: \(self.initialZoom!)")
+                    } else if let zoomInt = zoomValue as? Int {
+                        self.initialZoom = Double(zoomInt)
+                        print("✅ Successfully parsed initialZoom (from Int): \(self.initialZoom!)")
+                    } else {
+                        print("❌ Failed to parse 'zoom' from initialCameraPosition: \(zoomValue)")
+                    }
+                } else {
+                    print("❌ 'zoom' key not found in initialCameraPosition.")
+                }
+            } else {
+                print("❌ initialCameraPosition argument is not a [AnyHashable: Any]: \(initialCameraPositionArgs)")
+            }
+        } else {
+            print("❌ 'initialCameraPosition' key not found in arguments.")
         }
         
         // Delay map loading to ensure view has proper frame

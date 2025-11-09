@@ -126,7 +126,7 @@ class _BasicMapExampleState extends State<BasicMapExample> {
       appBar: AppBar(title: const Text('Basic Map')),
       body: OlaMap(
         // TODO: Replace with your actual credentials
-        apiKey: 'API-KEY',
+        apiKey: 'API_KEY',
         tileURL:
             'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
         projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
@@ -823,7 +823,7 @@ class _MarkersExampleState extends State<MarkersExample> {
         children: [
           OlaMap(
             // TODO: Replace with your actual credentials
-            apiKey: 'API-KEY',
+            apiKey: 'API_KEY',
             tileURL:
                 'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
             projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
@@ -1042,7 +1042,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
         children: [
           OlaMap(
             // TODO: Replace with your actual credentials
-            apiKey: 'API-KEY',
+            apiKey: 'API_KEY',
             tileURL:
                 'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
             projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
@@ -1154,7 +1154,7 @@ class _CameraExampleState extends State<CameraExample> {
         children: [
           OlaMap(
             // TODO: Replace with your actual credentials
-            apiKey: 'API-KEY',
+            apiKey: 'API_KEY',
             tileURL:
                 'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
             projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
@@ -1259,7 +1259,7 @@ class _EventsExampleState extends State<EventsExample> {
         children: [
           OlaMap(
             // TODO: Replace with your actual credentials
-            apiKey: 'API-KEY',
+            apiKey: 'API_KEY',
             tileURL:
                 'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
             projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
@@ -1374,7 +1374,7 @@ class _LocationExampleState extends State<LocationExample> {
       ),
       body: OlaMap(
         // TODO: Replace with your actual credentials
-        apiKey: 'API-KEY',
+        apiKey: 'API_KEY',
         tileURL:
             'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
         projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
