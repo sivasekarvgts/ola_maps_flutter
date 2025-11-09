@@ -20,19 +20,7 @@ export 'src/models/polygon.dart';
 // Main plugin class for initialization
 class OlaMapsFlutter {
   static const MethodChannel _channel = MethodChannel('ola_maps_flutter');
-  
-  static Future<void> initialize({
-    required String apiKey,
-    String? clientId,
-    String? clientSecret,
-  }) async {
-    await _channel.invokeMethod('initialize', {
-      'apiKey': apiKey,
-      'clientId': clientId,
-      'clientSecret': clientSecret,
-    });
-  }
-  
+
   static Future<String?> getPlatformVersion() async {
     final String? version = await _channel.invokeMethod('getPlatformVersion');
     return version;

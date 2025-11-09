@@ -15,7 +15,17 @@ A new Flutter plugin project.
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
-  s.platform = :ios, '12.0'
+  s.platform = :ios, '13.0'
+  s.vendored_frameworks = [
+    'frameworks/MapLibre.xcframework',
+    'frameworks/MoEngageAnalytics.xcframework',
+    'frameworks/MoEngageCore.xcframework',
+    'frameworks/MoEngageMessaging.xcframework',
+    'frameworks/MoEngageObjCUtils.xcframework',
+    'frameworks/MoEngageSDK.xcframework',
+    'frameworks/MoEngageSecurity.xcframework',
+    'frameworks/OlaMapCore.xcframework'
+  ]
 
   # Flutter.framework does not contain a i386 slice.
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }

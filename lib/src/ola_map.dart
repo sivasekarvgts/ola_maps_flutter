@@ -5,12 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'ola_map_controller.dart';
 import 'models/camera_position.dart';
-import 'models/lat_lng.dart';
 
 typedef OnMapCreated = void Function(OlaMapController controller);
 
 class OlaMap extends StatefulWidget {
   final String apiKey;
+  final String tileURL; // Added for iOS
+  final String projectId; // Added for iOS
   final String? clientId;
   final String? clientSecret;
   final CameraPosition initialCameraPosition;
@@ -25,6 +26,8 @@ class OlaMap extends StatefulWidget {
   const OlaMap({
     Key? key,
     required this.apiKey,
+    required this.tileURL,
+    required this.projectId,
     this.clientId,
     this.clientSecret,
     required this.initialCameraPosition,
@@ -43,6 +46,14 @@ class OlaMap extends StatefulWidget {
 
 class _OlaMapState extends State<OlaMap> {
   final Completer<OlaMapController> _controller = Completer<OlaMapController>();
+  late final String _viewKey;
+
+  @override
+  void initState() {
+    super.initState();
+    // Generate a stable key based on widget key or hash code
+    _viewKey = widget.key?.toString() ?? 'ola_map_${widget.hashCode}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,17 +77,14 @@ class _OlaMapState extends State<OlaMap> {
       );
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
       return UiKitView(
+        key: ValueKey(_viewKey),
         viewType: 'ola_maps_flutter/map_view',
         creationParams: {
           'apiKey': widget.apiKey,
-          'clientId': widget.clientId,
-          'clientSecret': widget.clientSecret,
+          'tileURL': widget.tileURL,
+          'projectId': widget.projectId,
           'initialCameraPosition': widget.initialCameraPosition.toJson(),
           'myLocationEnabled': widget.myLocationEnabled,
-          'zoomControlsEnabled': widget.zoomControlsEnabled,
-          'compassEnabled': widget.compassEnabled,
-          'trafficEnabled': widget.trafficEnabled,
-          'mapStyle': widget.mapStyle,
         },
         creationParamsCodec: const StandardMessageCodec(),
         onPlatformViewCreated: _onPlatformViewCreated,
