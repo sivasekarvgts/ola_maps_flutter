@@ -125,7 +125,11 @@ class _BasicMapExampleState extends State<BasicMapExample> {
     return Scaffold(
       appBar: AppBar(title: const Text('Basic Map')),
       body: OlaMap(
+        // TODO: Replace with your actual credentials
         apiKey: 'API-KEY',
+        tileURL:
+            'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
+        projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
         initialCameraPosition: const CameraPosition(
           target: LatLng(12.9716, 77.5946), // Bangalore coordinates
           zoom: 12,
@@ -536,7 +540,11 @@ class _PredefinedMarkersExampleState extends State<PredefinedMarkersExample> {
       body: Stack(
         children: [
           OlaMap(
+            // TODO: Replace with your actual credentials
             apiKey: 'API-KEY',
+            tileURL:
+                'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
+            projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
             initialCameraPosition: const CameraPosition(
               target: LatLng(
                 12.9345,
@@ -814,7 +822,11 @@ class _MarkersExampleState extends State<MarkersExample> {
       body: Stack(
         children: [
           OlaMap(
+            // TODO: Replace with your actual credentials
             apiKey: 'API-KEY',
+            tileURL:
+                'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
+            projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
             initialCameraPosition: const CameraPosition(
               target: LatLng(12.9716, 77.5946),
               zoom: 12,
@@ -1008,7 +1020,7 @@ class _PolylinesExampleState extends State<PolylinesExample> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Cleared all polylines'),
-        duration: Duration(seconds: 2),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -1029,7 +1041,11 @@ class _PolylinesExampleState extends State<PolylinesExample> {
       body: Stack(
         children: [
           OlaMap(
+            // TODO: Replace with your actual credentials
             apiKey: 'API-KEY',
+            tileURL:
+                'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
+            projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
             initialCameraPosition: const CameraPosition(
               target: LatLng(12.9716, 77.5946),
               zoom: 11,
@@ -1137,7 +1153,11 @@ class _CameraExampleState extends State<CameraExample> {
       body: Stack(
         children: [
           OlaMap(
+            // TODO: Replace with your actual credentials
             apiKey: 'API-KEY',
+            tileURL:
+                'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
+            projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
             initialCameraPosition: const CameraPosition(
               target: LatLng(12.9716, 77.5946),
               zoom: 12,
@@ -1238,7 +1258,11 @@ class _EventsExampleState extends State<EventsExample> {
       body: Stack(
         children: [
           OlaMap(
+            // TODO: Replace with your actual credentials
             apiKey: 'API-KEY',
+            tileURL:
+                'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
+            projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
             initialCameraPosition: const CameraPosition(
               target: LatLng(12.9716, 77.5946),
               zoom: 12,
@@ -1349,7 +1373,11 @@ class _LocationExampleState extends State<LocationExample> {
         ],
       ),
       body: OlaMap(
+        // TODO: Replace with your actual credentials
         apiKey: 'API-KEY',
+        tileURL:
+            'https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json',
+        projectId: '04f0ab5b-6bbf-40fa-adda-9ef3eecd17ae',
         initialCameraPosition: const CameraPosition(
           target: LatLng(12.9716, 77.5946),
           zoom: 12,
