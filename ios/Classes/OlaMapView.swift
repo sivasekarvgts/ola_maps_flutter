@@ -58,6 +58,8 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
     private var initialZoom: Double?
     private var mapLoaded = false
     private var mapReady = false
+    private var styleLoaded = false
+    private var setupDone = false
 
     init(
         frame: CGRect,
@@ -141,7 +143,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         olaMapInstance.delegate = self
         
         // Store initial camera position and zoom to apply after map is ready (like Android's setupMap)
-        if let cameraPosition = arguments["cameraPosition"] as? [String: Any],
+        if let cameraPosition = arguments["initialCameraPosition"] as? [String: Any],
            let target = cameraPosition["target"] as? [Double] {
             self.initialCoordinate = OlaCoordinate(latitude: target[0], longitude: target[1])
             self.initialZoom = cameraPosition["zoom"] as? Double
@@ -631,36 +633,59 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
             self.mapView.layoutIfNeeded()
             print("✅ Map view visibility updated")
             
-            // Setup map after it's ready (similar to Android's setupMap)
+            // Setup map after both map and style are loaded
             self.setupMapAfterReady()
         }
     }
     
     // Setup map after it's fully loaded (similar to Android's setupMap)
+    // According to iOS SDK docs: setCamera(at:zoomLevel:) should be called after map is ready
     private func setupMapAfterReady() {
-        guard let olaMap = self.olaMap, mapReady else {
-            print("⚠️ Cannot setup map - map not ready")
+        guard let olaMap = self.olaMap, mapReady, styleLoaded else {
+            // Wait for both map and style to be loaded before setting camera
+            if !mapReady {
+                print("⚠️ Cannot setup map - map not ready yet")
+            }
+            if !styleLoaded {
+                print("⚠️ Cannot setup map - style not loaded yet")
+            }
             return
         }
         
-        print("🔧 Setting up map after ready...")
+        // Only setup once
+        if setupDone {
+            return
+        }
+        setupDone = true
         
-        // Set initial camera position if provided (like Android does in setupMap)
+        print("🔧 Setting up map after ready (map and style both loaded)...")
+        
+        // Set initial camera position if provided
+        // According to iOS SDK docs: olaMap.setCamera(at: OlaCoordinate, zoomLevel: Double)
         if let coordinate = initialCoordinate, let zoom = initialZoom {
             print("📍 Setting initial camera position: (\(coordinate.getLatitude), \(coordinate.getLongitude)) at zoom: \(zoom)")
             olaMap.setCamera(at: coordinate, zoomLevel: zoom)
         } else if let coordinate = initialCoordinate {
-            // If no zoom specified, use default
-            print("📍 Setting initial camera position: (\(coordinate.getLatitude), \(coordinate.getLongitude)) at default zoom")
+            // If no zoom specified, use default zoom level
+            print("📍 Setting initial camera position: (\(coordinate.getLatitude), \(coordinate.getLongitude)) at default zoom: 12.0")
             olaMap.setCamera(at: coordinate, zoomLevel: 12.0)
+        } else {
+            print("ℹ️ No initial camera position provided")
         }
     }
     
     func mapSuccessfullyLoadedStyle() {
         // This is a required delegate method.
         print("✅ Map Style Loaded Successfully")
+        
+        // Mark style as loaded
+        styleLoaded = true
+        
         DispatchQueue.main.async {
             self.mapView.backgroundColor = .clear // Ensure background is clear after style loads
+            
+            // Setup map after both map and style are loaded
+            self.setupMapAfterReady()
         }
     }
     
