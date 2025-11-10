@@ -594,7 +594,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
             methodChannel.invokeMethod("onMarkerTap", arguments: ["markerId": tappedMarkerId])
         } else {
             // If no marker was tapped, invoke the general map click event
-            let latLng: [String: Double] = ["latitude": coordinate.latitude, "longitude": coordinate.longitude]
+            let latLng: [String: Double] = ["latitude": coordinate.getLatitude, "longitude": coordinate.getLongitude]
             methodChannel.invokeMethod("onMapClick", arguments: latLng)
         }
     }
