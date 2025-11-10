@@ -361,10 +361,12 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         let contentHeight = iconHeight + ((title != nil || (snippet?.isEmpty == false)) ? 30 : 0)
         let containerView = UIView(frame: CGRect(x: 0, y: 0, width: contentWidth, height: contentHeight))
         containerView.backgroundColor = .clear
+        containerView.isUserInteractionEnabled = false
         
         let imageView = UIImageView(image: markerImage)
         imageView.contentMode = .scaleAspectFit
         imageView.frame = CGRect(x: 0, y: 0, width: iconWidth, height: iconHeight)
+        imageView.isUserInteractionEnabled = false
         containerView.addSubview(imageView)
         
         var calloutLabel: UILabel?
@@ -386,7 +388,8 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
                                  y: iconHeight + 2,
                                  width: size.width + 2 * paddingH,
                                  height: size.height + 2 * paddingV)
-            label.isHidden = true
+            label.isHidden = false
+            label.isUserInteractionEnabled = false
             containerView.addSubview(label)
             calloutLabel = label
         }
@@ -396,11 +399,8 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         
         annotationView.didSelectOnAnnotation = { [weak self] id in
             guard let self = self else { return }
-            // Toggle callout visibility if present
-            if let label = calloutLabel {
-                label.isHidden.toggle()
-            }
-            self.methodChannel.invokeMethod("onMarkerTap", arguments: ["markerId": id])
+            // Keep callout always visible; just forward tap event
+            self.methodChannel.invokeMethod("onMarkerTap", arguments: id)
         }
         
         // Store view reference for future show/hide/update calls
@@ -437,6 +437,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         for sub in view.subviews {
             if let label = sub as? UILabel {
                 label.text = text
+                label.isHidden = false
                 found = true
             }
         }
@@ -460,6 +461,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
                                  y: iconHeight + 2,
                                  width: size.width + 2 * paddingH,
                                  height: size.height + 2 * paddingV)
+            label.isHidden = false
             view.addSubview(label)
         }
     }
@@ -594,6 +596,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         }
         olaMap.removeAnnotation(by: markerId)
         markers.removeValue(forKey: markerId)
+        markerViews.removeValue(forKey: markerId)
     }
     
     private func clearMarkers(olaMap: OlaMapService) {
@@ -601,6 +604,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
             olaMap.removeAnnotation(by: markerId)
         }
         markers.removeAll()
+        markerViews.removeAll()
     }
     
     // Info Window functionality is not directly supported by OlaMapCore SDK on marker tap.
@@ -712,7 +716,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
     func didTapOnMap(_ coordinate: OlaCoordinate) {
         // Check if a marker was tapped
         if let tappedMarkerId = findTappedMarker(at: coordinate) {
-            methodChannel.invokeMethod("onMarkerTap", arguments: ["markerId": tappedMarkerId])
+            methodChannel.invokeMethod("onMarkerTap", arguments: tappedMarkerId)
         } else {
             // If no marker was tapped, invoke the general map click event
             let latLng: [String: Double] = ["latitude": coordinate.getLatitude, "longitude": coordinate.getLongitude]
@@ -756,6 +760,20 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         // The new camera position is not provided in the delegate.
         // We can't send the updated position back.
         methodChannel.invokeMethod("onCameraMove", arguments: nil)
+    }
+    
+    // Called by SDK when an annotation (marker) view is selected
+    func didSelectAnnotationView(_ annotationId: String) {
+        // Show callout, if present, for this marker
+        if let view = markerViews[annotationId] {
+            for sub in view.subviews {
+                if let label = sub as? UILabel {
+                    label.isHidden = false
+                }
+            }
+        }
+        // Mirror Android behavior: notify Flutter about marker tap
+        methodChannel.invokeMethod("onMarkerTap", arguments: annotationId)
     }
     
     func mapSuccessfullyLoaded() {
