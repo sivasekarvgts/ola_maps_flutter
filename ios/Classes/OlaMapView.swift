@@ -344,8 +344,11 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         
         let annotationView = CustomAnnotationView(identifier: markerId, image: markerImage ?? UIImage())
         annotationView.bounds = CGRect(x: 0, y: 0, width: iconWidth, height: iconHeight)
+        // Assuming CustomAnnotationView has properties for title and subtitle
+        annotationView.title = title
+        annotationView.subtitle = snippet
         
-        print("📍 Adding marker \(markerId) at (\(lat), \(lng)) with icon size: \(iconWidth)x\(iconHeight)")
+        print("📍 Adding marker \(markerId) at (\(lat), \(lng)) with icon size: \(iconWidth)x\(iconHeight). Marker image is nil: \(markerImage == nil)")
         olaMap.setAnnotationMarker(at: coordinate, annotationView: annotationView, identifier: markerId)
     }
     
@@ -488,28 +491,9 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         markers.removeAll()
     }
     
-    private func showInfoWindow(olaMap: OlaMapService, arguments: Any?) {
-        guard let args = arguments as? [String: Any],
-              let markerId = args["markerId"] as? String,
-              let markerInfo = markers[markerId] else {
-            return
-        }
-        
-        let infoWindowId = "\(markerId)_info"
-        let text = markerInfo.title ?? markerInfo.snippet ?? ""
-        
-        let infoWindow = InfoAnnotationView(identifier: infoWindowId, model: InfoAnnotationDecorator(), text: text, isActive: true)
-        olaMap.setAnnotationMarker(at: markerInfo.coordinate, annotationView: infoWindow, identifier: infoWindowId)
-    }
-
-    private func hideInfoWindow(olaMap: OlaMapService, arguments: Any?) {
-        guard let args = arguments as? [String: Any],
-              let markerId = args["markerId"] as? String else {
-            return
-        }
-        let infoWindowId = "\(markerId)_info"
-        olaMap.removeAnnotation(by: infoWindowId)
-    }
+    // Info Window functionality is not directly supported by OlaMapCore SDK on marker tap.
+        // A custom Flutter overlay or a custom marker view with embedded info would be needed.
+        // Removing these methods as they are not functioning as intended for info windows.
     
     private func addPolyline(olaMap: OlaMapService, arguments: Any?) {
         guard let args = arguments as? [String: Any],
