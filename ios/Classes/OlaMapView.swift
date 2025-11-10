@@ -396,8 +396,10 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         }
         
         let annotationView = CustomAnnotationView(identifier: markerId, image: nil, color: nil, opacity: nil, markerView: containerView)
-        // Limit hit area to icon size
+        // Limit hit area to icon size for precise tapping
         annotationView.bounds = CGRect(x: 0, y: 0, width: iconWidth, height: iconHeight)
+        // Ensure annotation view can receive taps at all zoom levels
+        annotationView.isUserInteractionEnabled = true
         
         annotationView.didSelectOnAnnotation = { [weak self] id in
             guard let self = self else { return }
@@ -725,8 +727,13 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
     // MARK: - OlaMapServiceDelegate Methods
 
     func didTapOnMap(_ coordinate: OlaCoordinate) {
-        // Check if a marker was tapped
+        print("🗺️ Map tapped at: (\(coordinate.getLatitude), \(coordinate.getLongitude))")
+        
+        // Check if a marker was tapped using coordinate-based detection
+        // This works at all zoom levels, including when zoomed out
         if let tappedMarkerId = findTappedMarker(at: coordinate) {
+            print("✅ Marker tapped: \(tappedMarkerId)")
+            
             // Mirror Android behavior: when marker is tapped, call both onMarkerTap AND onMapClick
             methodChannel.invokeMethod("onMarkerTap", arguments: tappedMarkerId)
             
@@ -739,28 +746,43 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
             }
         } else {
             // If no marker was tapped, invoke the general map click event
+            print("📍 No marker found at tap location")
             let latLng: [String: Double] = ["latitude": coordinate.getLatitude, "longitude": coordinate.getLongitude]
             methodChannel.invokeMethod("onMapClick", arguments: latLng)
         }
     }
     
     // Helper to find if a marker was tapped within a certain radius
-    // Using a larger, more forgiving radius that works at all zoom levels
+    // Using a very large, forgiving radius that works at all zoom levels
+    // Especially important when zoomed out where markers appear closer together in coordinate space
     private func findTappedMarker(at tappedCoordinate: OlaCoordinate) -> String? {
-        // Increased tap radius to work at all zoom levels
-        // 0.002 degrees is approximately 200 meters, which should work well for marker taps
-        // at both high and low zoom levels
-        let tapRadius: Double = 0.002
+        // Very large tap radius to work at all zoom levels, especially when heavily zoomed out
+        // 0.05 degrees is approximately 5.5 km, which ensures taps work at any zoom level
+        // This matches Android behavior where marker taps work consistently at all zoom levels
+        let tapRadius: Double = 0.05
+        
+        print("🔍 Searching for marker near (\(tappedCoordinate.getLatitude), \(tappedCoordinate.getLongitude)) with radius: \(tapRadius)")
+        print("🔍 Total markers: \(markers.count)")
         
         var closestMarkerId: String? = nil
         var closestDistance: Double = Double.infinity
         
+        // Find the closest marker within the tap radius
         for (markerId, markerInfo) in markers {
             let distance = calculateDistance(coord1: tappedCoordinate, coord2: markerInfo.coordinate)
+            print("  📍 Marker \(markerId) at (\(markerInfo.coordinate.getLatitude), \(markerInfo.coordinate.getLongitude)) - distance: \(distance)")
+            
             if distance < tapRadius && distance < closestDistance {
                 closestDistance = distance
                 closestMarkerId = markerId
+                print("  ✅ Found closer marker: \(markerId) at distance: \(distance)")
             }
+        }
+        
+        if let found = closestMarkerId {
+            print("🎯 Closest marker found: \(found) at distance: \(closestDistance)")
+        } else {
+            print("❌ No marker found within tap radius")
         }
         
         return closestMarkerId
@@ -793,6 +815,8 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
     
     // Called by SDK when an annotation (marker) view is selected
     func didSelectAnnotationView(_ annotationId: String) {
+        print("🎯 Annotation view selected: \(annotationId)")
+        
         // Show callout, if present, for this marker
         if let view = markerViews[annotationId] {
             for sub in view.subviews {
@@ -805,6 +829,8 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         // Mirror Android behavior: when marker is tapped, call both onMarkerTap AND onMapClick
         // This matches Android where tapping a marker also triggers the map click event
         if let markerInfo = markers[annotationId] {
+            print("✅ Triggering onMarkerTap and onMapClick for marker: \(annotationId)")
+            
             // First, notify about marker tap
             methodChannel.invokeMethod("onMarkerTap", arguments: annotationId)
             
@@ -816,6 +842,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
             ]
             methodChannel.invokeMethod("onMapClick", arguments: latLng)
         } else {
+            print("⚠️ Marker info not found for: \(annotationId)")
             // Fallback: just notify about marker tap if marker info not found
             methodChannel.invokeMethod("onMarkerTap", arguments: annotationId)
         }
