@@ -249,12 +249,6 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         case "clearMarkers":
             clearMarkers(olaMap: olaMap)
             result(nil)
-        case "showInfoWindow":
-            showInfoWindow(olaMap: olaMap, arguments: call.arguments)
-            result(nil)
-        case "hideInfoWindow":
-            hideInfoWindow(olaMap: olaMap, arguments: call.arguments)
-            result(nil)
         
         // Polyline Methods
         case "addPolyline":
