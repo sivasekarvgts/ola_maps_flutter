@@ -55,6 +55,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
     private var olaMap: OlaMapService?
     private var methodChannel: FlutterMethodChannel
     private var markers = [String: MarkerInfo]()
+    private var markerViews = [String: CustomAnnotationView]()
     private var polylineIds = Set<String>()
     private var polygonIds = Set<String>()
     private var initialCoordinate: OlaCoordinate?
@@ -243,6 +244,25 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         case "addMarker":
             addMarker(olaMap: olaMap, arguments: call.arguments)
             result(nil)
+        case "showInfoWindow":
+            if let args = call.arguments as? [String: Any],
+               let markerId = args["markerId"] as? String {
+                showInfoWindow(markerId: markerId)
+            }
+            result(nil)
+        case "hideInfoWindow":
+            if let args = call.arguments as? [String: Any],
+               let markerId = args["markerId"] as? String {
+                hideInfoWindow(markerId: markerId)
+            }
+            result(nil)
+        case "updateInfoWindow":
+            if let args = call.arguments as? [String: Any],
+               let markerId = args["markerId"] as? String,
+               let infoText = args["infoText"] as? String {
+                updateInfoWindow(markerId: markerId, text: infoText)
+            }
+            result(nil)
         case "removeMarker":
             removeMarker(olaMap: olaMap, arguments: call.arguments)
             result(nil)
@@ -336,11 +356,112 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
             markerImage = createDefaultMarkerIcon(size: CGSize(width: iconWidth, height: iconHeight))
         }
         
-        let annotationView = CustomAnnotationView(identifier: markerId, image: markerImage ?? UIImage())
-        annotationView.bounds = CGRect(x: 0, y: 0, width: iconWidth, height: iconHeight)
+        // Build a container view that can include icon and optional callout label
+        let contentWidth = iconWidth
+        let contentHeight = iconHeight + ((title != nil || (snippet?.isEmpty == false)) ? 30 : 0)
+        let containerView = UIView(frame: CGRect(x: 0, y: 0, width: contentWidth, height: contentHeight))
+        containerView.backgroundColor = .clear
+        
+        let imageView = UIImageView(image: markerImage)
+        imageView.contentMode = .scaleAspectFit
+        imageView.frame = CGRect(x: 0, y: 0, width: iconWidth, height: iconHeight)
+        containerView.addSubview(imageView)
+        
+        var calloutLabel: UILabel?
+        if let text = (snippet?.isEmpty == false ? snippet : title) {
+            let label = UILabel()
+            label.text = text
+            label.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+            label.textColor = .white
+            label.numberOfLines = 2
+            label.textAlignment = .center
+            label.backgroundColor = UIColor.black.withAlphaComponent(0.75)
+            label.layer.cornerRadius = 6
+            label.layer.masksToBounds = true
+            let paddingH: CGFloat = 8
+            let paddingV: CGFloat = 4
+            let maxLabelWidth = max(60, contentWidth)
+            let size = label.sizeThatFits(CGSize(width: maxLabelWidth - 2 * paddingH, height: 100))
+            label.frame = CGRect(x: (contentWidth - (size.width + 2 * paddingH)) / 2,
+                                 y: iconHeight + 2,
+                                 width: size.width + 2 * paddingH,
+                                 height: size.height + 2 * paddingV)
+            label.isHidden = true
+            containerView.addSubview(label)
+            calloutLabel = label
+        }
+        
+        let annotationView = CustomAnnotationView(identifier: markerId, image: nil, color: nil, opacity: nil, markerView: containerView)
+        annotationView.bounds = containerView.bounds
+        
+        annotationView.didSelectOnAnnotation = { [weak self] id in
+            guard let self = self else { return }
+            // Toggle callout visibility if present
+            if let label = calloutLabel {
+                label.isHidden.toggle()
+            }
+            self.methodChannel.invokeMethod("onMarkerTap", arguments: ["markerId": id])
+        }
+        
+        // Store view reference for future show/hide/update calls
+        markerViews[markerId] = annotationView
         
         print("📍 Adding marker \(markerId) at (\(lat), \(lng)) with icon size: \(iconWidth)x\(iconHeight). Marker image is nil: \(markerImage == nil)")
         olaMap.setAnnotationMarker(at: coordinate, annotationView: annotationView, identifier: markerId)
+    }
+    
+    // Show callout for marker
+    private func showInfoWindow(markerId: String) {
+        guard let view = markerViews[markerId] else { return }
+        for sub in view.subviews {
+            if let label = sub as? UILabel {
+                label.isHidden = false
+            }
+        }
+    }
+    
+    // Hide callout for marker
+    private func hideInfoWindow(markerId: String) {
+        guard let view = markerViews[markerId] else { return }
+        for sub in view.subviews {
+            if let label = sub as? UILabel {
+                label.isHidden = true
+            }
+        }
+    }
+    
+    // Update callout text if present; create if missing
+    private func updateInfoWindow(markerId: String, text: String) {
+        guard let view = markerViews[markerId] else { return }
+        var found = false
+        for sub in view.subviews {
+            if let label = sub as? UILabel {
+                label.text = text
+                found = true
+            }
+        }
+        if !found {
+            let width = view.bounds.width
+            let iconHeight = view.bounds.height
+            let label = UILabel()
+            label.text = text
+            label.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+            label.textColor = .white
+            label.numberOfLines = 2
+            label.textAlignment = .center
+            label.backgroundColor = UIColor.black.withAlphaComponent(0.75)
+            label.layer.cornerRadius = 6
+            label.layer.masksToBounds = true
+            let paddingH: CGFloat = 8
+            let paddingV: CGFloat = 4
+            let maxLabelWidth = max(60, width)
+            let size = label.sizeThatFits(CGSize(width: maxLabelWidth - 2 * paddingH, height: 100))
+            label.frame = CGRect(x: (width - (size.width + 2 * paddingH)) / 2,
+                                 y: iconHeight + 2,
+                                 width: size.width + 2 * paddingH,
+                                 height: size.height + 2 * paddingV)
+            view.addSubview(label)
+        }
     }
     
     // Get marker icon from icon data
@@ -645,6 +766,9 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         
         // Mark map as ready
         mapReady = true
+        
+        // Enable annotation callouts if supported by SDK
+        olaMap?.setAnnotationCalloutEnable(true)
         
         // Ensure the map view is visible
         DispatchQueue.main.async {
