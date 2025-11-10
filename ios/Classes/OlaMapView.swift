@@ -338,9 +338,6 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         
         let annotationView = CustomAnnotationView(identifier: markerId, image: markerImage ?? UIImage())
         annotationView.bounds = CGRect(x: 0, y: 0, width: iconWidth, height: iconHeight)
-        // Assuming CustomAnnotationView has properties for title and subtitle
-        annotationView.title = title
-        annotationView.subtitle = snippet
         
         print("📍 Adding marker \(markerId) at (\(lat), \(lng)) with icon size: \(iconWidth)x\(iconHeight). Marker image is nil: \(markerImage == nil)")
         olaMap.setAnnotationMarker(at: coordinate, annotationView: annotationView, identifier: markerId)
@@ -592,9 +589,34 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
     // MARK: - OlaMapServiceDelegate Methods
 
     func didTapOnMap(_ coordinate: OlaCoordinate) {
-        // Commented out to isolate the protocol conformance issue.
-        // let latLng: [String: Double] = ["latitude": coordinate.latitude, "longitude": coordinate.longitude]
-        // methodChannel.invokeMethod("onMapClick", arguments: latLng)
+        // Check if a marker was tapped
+        if let tappedMarkerId = findTappedMarker(at: coordinate) {
+            methodChannel.invokeMethod("onMarkerTap", arguments: ["markerId": tappedMarkerId])
+        } else {
+            // If no marker was tapped, invoke the general map click event
+            let latLng: [String: Double] = ["latitude": coordinate.latitude, "longitude": coordinate.longitude]
+            methodChannel.invokeMethod("onMapClick", arguments: latLng)
+        }
+    }
+    
+    // Helper to find if a marker was tapped within a certain radius
+    private func findTappedMarker(at tappedCoordinate: OlaCoordinate) -> String? {
+        let tapRadius: Double = 0.0005 // Adjust this value as needed (e.g., 0.0005 degrees is approx 50 meters)
+        
+        for (markerId, markerInfo) in markers {
+            let distance = calculateDistance(coord1: tappedCoordinate, coord2: markerInfo.coordinate)
+            if distance < tapRadius {
+                return markerId
+            }
+        }
+        return nil
+    }
+    
+    // Very basic distance calculation (approximation for small distances)
+    private func calculateDistance(coord1: OlaCoordinate, coord2: OlaCoordinate) -> Double {
+        let latDiff = coord1.latitude - coord2.latitude
+        let lonDiff = coord1.longitude - coord2.longitude
+        return sqrt(latDiff * latDiff + lonDiff * lonDiff)
     }
     
     func didTapOnMap(feature: POIModel) {
