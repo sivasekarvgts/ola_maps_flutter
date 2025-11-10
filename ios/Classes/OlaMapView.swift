@@ -614,8 +614,8 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
     
     // Very basic distance calculation (approximation for small distances)
     private func calculateDistance(coord1: OlaCoordinate, coord2: OlaCoordinate) -> Double {
-        let latDiff = coord1.latitude - coord2.latitude
-        let lonDiff = coord1.longitude - coord2.longitude
+        let latDiff = coord1.getLatitude - coord2.getLatitude
+        let lonDiff = coord1.getLongitude - coord2.getLongitude
         return sqrt(latDiff * latDiff + lonDiff * lonDiff)
     }
     
