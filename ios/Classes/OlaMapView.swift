@@ -23,9 +23,11 @@ struct MarkerInfo {
 // Factory to create OlaMapView instances
 class OlaMapFactory: NSObject, FlutterPlatformViewFactory {
     private var messenger: FlutterBinaryMessenger
+    private var registrar: FlutterPluginRegistrar // Add registrar
 
-    init(messenger: FlutterBinaryMessenger) {
+    init(messenger: FlutterBinaryMessenger, registrar: FlutterPluginRegistrar) { // Update init
         self.messenger = messenger
+        self.registrar = registrar // Store registrar
         super.init()
     }
 
@@ -38,7 +40,8 @@ class OlaMapFactory: NSObject, FlutterPlatformViewFactory {
             frame: frame,
             viewIdentifier: viewId,
             arguments: args,
-            binaryMessenger: messenger)
+            binaryMessenger: messenger,
+            registrar: registrar) // Pass registrar
     }
 
     public func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
@@ -60,12 +63,14 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
     private var mapReady = false
     private var styleLoaded = false
     private var setupDone = false
+    private var registrar: FlutterPluginRegistrar // Add registrar property
 
     init(
         frame: CGRect,
         viewIdentifier viewId: Int64,
         arguments args: Any?,
-        binaryMessenger messenger: FlutterBinaryMessenger
+        binaryMessenger messenger: FlutterBinaryMessenger,
+        registrar: FlutterPluginRegistrar // Add registrar parameter
     ) {
         mapView = UIView(frame: frame)
         // Ensure the view has proper autoresizing for Flutter
@@ -76,7 +81,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         mapView.alpha = 1.0
         print("🗺️ Creating OlaMapView with frame: \(frame)")
         methodChannel = FlutterMethodChannel(name: "ola_maps_flutter_\(viewId)", binaryMessenger: messenger)
-
+        self.registrar = registrar // Store registrar
         super.init()
 
         methodChannel.setMethodCallHandler(handle)
@@ -386,34 +391,16 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
     
     // Load asset image from Flutter assets
     private func loadAssetImage(assetName: String) -> UIImage? {
-        // Remove 'assets/' prefix if present, as Flutter assets are accessed differently
-        var path = assetName
-        if path.hasPrefix("assets/") {
-            path = String(path.dropFirst(7)) // Remove "assets/" prefix
-        }
-        
-        // Try to load from main bundle
-        if let image = UIImage(named: path) {
-            print("✅ Loaded asset from bundle: \(path)")
-            return image
-        }
-        
-        // Try with full asset path
-        if let image = UIImage(named: assetName) {
-            print("✅ Loaded asset with full path: \(assetName)")
-            return image
-        }
-        
-        // Try loading from Flutter assets using asset lookup
-        // Note: This requires the asset to be properly registered in pubspec.yaml
-        if let bundlePath = Bundle.main.path(forResource: path, ofType: nil) {
-            if let image = UIImage(contentsOfFile: bundlePath) {
-                print("✅ Loaded asset from file path: \(bundlePath)")
+        // Use the registrar to lookup the asset path
+        let key = registrar.lookupKey(forAsset: assetName)
+        if let path = Bundle.main.path(forResource: key, ofType: nil) {
+            if let image = UIImage(contentsOfFile: path) {
+                print("✅ Loaded asset from Flutter asset bundle: \(assetName)")
                 return image
             }
         }
         
-        print("❌ Failed to load asset: \(assetName)")
+        print("❌ Failed to load asset: \(assetName) using registrar. Looked for key: \(key)")
         return nil
     }
     
