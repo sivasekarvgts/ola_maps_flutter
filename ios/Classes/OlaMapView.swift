@@ -356,12 +356,13 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
             markerImage = createDefaultMarkerIcon(size: CGSize(width: iconWidth, height: iconHeight))
         }
         
-        // Build a container view that can include icon and optional callout label
+        // Build a container view sized to the icon only (label will overflow)
         let contentWidth = iconWidth
-        let contentHeight = iconHeight + ((title != nil || (snippet?.isEmpty == false)) ? 30 : 0)
+        let contentHeight = iconHeight
         let containerView = UIView(frame: CGRect(x: 0, y: 0, width: contentWidth, height: contentHeight))
         containerView.backgroundColor = .clear
         containerView.isUserInteractionEnabled = false
+        containerView.clipsToBounds = false
         
         let imageView = UIImageView(image: markerImage)
         imageView.contentMode = .scaleAspectFit
@@ -385,7 +386,7 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
             let maxLabelWidth = max(60, contentWidth)
             let size = label.sizeThatFits(CGSize(width: maxLabelWidth - 2 * paddingH, height: 100))
             label.frame = CGRect(x: (contentWidth - (size.width + 2 * paddingH)) / 2,
-                                 y: iconHeight + 2,
+                                 y: -(size.height + 2 * paddingV + 4),
                                  width: size.width + 2 * paddingH,
                                  height: size.height + 2 * paddingV)
             label.isHidden = false
@@ -395,7 +396,8 @@ class OlaMapView: NSObject, FlutterPlatformView, OlaMapServiceDelegate {
         }
         
         let annotationView = CustomAnnotationView(identifier: markerId, image: nil, color: nil, opacity: nil, markerView: containerView)
-        annotationView.bounds = containerView.bounds
+        // Limit hit area to icon size
+        annotationView.bounds = CGRect(x: 0, y: 0, width: iconWidth, height: iconHeight)
         
         annotationView.didSelectOnAnnotation = { [weak self] id in
             guard let self = self else { return }
