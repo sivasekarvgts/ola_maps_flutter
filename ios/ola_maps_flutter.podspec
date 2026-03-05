@@ -18,12 +18,6 @@ A new Flutter plugin project.
   s.platform = :ios, '13.0'
   s.vendored_frameworks = [
     'frameworks/MapLibre.xcframework',
-    'frameworks/MoEngageAnalytics.xcframework',
-    'frameworks/MoEngageCore.xcframework',
-    'frameworks/MoEngageMessaging.xcframework',
-    'frameworks/MoEngageObjCUtils.xcframework',
-    'frameworks/MoEngageSDK.xcframework',
-    'frameworks/MoEngageSecurity.xcframework',
     'frameworks/OlaMapCore.xcframework'
   ]
 
